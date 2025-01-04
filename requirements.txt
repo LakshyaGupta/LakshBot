@@ -4,4 +4,11 @@ yfinance
 pandas
 ta
 xgboost
+Flask
+flask_cors
+pandas
+numpy
+matplotlib
+scikit-learn
 tensorflow
+gunicorn
