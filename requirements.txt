@@ -12,3 +12,6 @@ matplotlib
 scikit-learn
 tensorflow
 gunicorn
+seaborn
+datetime
+pymongo
