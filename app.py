@@ -143,11 +143,18 @@ def predict_stock(data, prediction_years):
     return predictions, future_df
 
 def save_to_mongodb(dataset_url, predictions, future_df):
+    # Convert future_df index to strings
+    future_df.index = future_df.index.map(str)
+    future_df_dict = future_df.to_dict()
+
+    # Create the data to save
     data_to_save = {
         "dataset_url": dataset_url,
         "predictions": predictions.tolist(),
-        "future_predictions": future_df.to_dict()
+        "future_predictions": future_df_dict
     }
+
+    # Insert into MongoDB
     collection.insert_one(data_to_save)
     st.success("Predictions saved to MongoDB.")
 
@@ -158,7 +165,9 @@ def analyze_data(data, predictions, future_df, timeframe):
     mean_val = np.mean(data_resampled['Close'])
     st.write(f"Historical Mean: {mean_val}, Standard Deviation: {std_devs}")
 
-    correlation_matrix = data.corr()
+    # Ensure only numeric data is used for correlation calculation
+    numeric_data = data.select_dtypes(include=[np.number])
+    correlation_matrix = numeric_data.corr()
     st.write("### Correlation Matrix")
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.heatmap(correlation_matrix, annot=True, ax=ax, cmap='coolwarm')
