@@ -23,7 +23,7 @@ password_correct = False
 def password_protection():
     global password_correct
     password = st.sidebar.text_input("Enter password to access the dashboard", type="password")
-    if password == "Associate7!!7":  # Replace with your desired password
+    if password == "Associate7!!7t":  # Replace with your desired password
         password_correct = True
         st.sidebar.success("Password correct! You now have access.")
         main_runner()
@@ -206,7 +206,7 @@ def save_to_mongodb(dataset_urls, predictions, future_df):
     }
 
     # Insert into MongoDB
-    collection.insert_one(data_to_save)
+    # collection.insert_one(data_to_save)
     st.success("Predictions saved to MongoDB.")
 
 def analyze_data(data, predictions, future_df, timeframe):
