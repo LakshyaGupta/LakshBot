@@ -15,3 +15,5 @@ gunicorn
 seaborn
 datetime
 pymongo
+stable_baselines3
+gym
