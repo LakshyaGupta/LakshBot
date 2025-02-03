@@ -14,8 +14,9 @@ from datetime import datetime, timedelta
 from pymongo import MongoClient
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
-import gym
-from gym import spaces
+import gymnasium as gym  # Use gymnasium instead of gym
+from gymnasium import spaces
+import shimmy  # Ensure shimmy is installed
 
 st.set_page_config(page_title="Stock Analysis & Prediction Dashboard", layout="wide")
 
