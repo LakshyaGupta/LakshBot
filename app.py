@@ -161,7 +161,7 @@ def main_runner():
             st.write(f"RL Model Accuracy: {np.mean(rl_predictions['Accuracy'])*100:.2f}%")
             st.line_chart(rl_predictions[['Actual', 'Predicted']])
 
-            save_to_mongodb(dataset_urls, lstm_predictions, future_df, rl_predictions)
+            # save_to_mongodb(dataset_urls, lstm_predictions, future_df, rl_predictions)
             
             analyze_data(combined_data, backtested_lstm['Predicted'], future_df, timeframe)
         else:
