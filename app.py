@@ -14,9 +14,8 @@ from datetime import datetime, timedelta
 from pymongo import MongoClient
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
-import gymnasium as gym  # Use gymnasium instead of gym
+import gymnasium as gym
 from gymnasium import spaces
-import shimmy  # Ensure shimmy is installed
 
 st.set_page_config(page_title="Stock Analysis & Prediction Dashboard", layout="wide")
 
@@ -30,38 +29,37 @@ password_correct = False
 
 class PredictiveRLEnv(gym.Env):
     def __init__(self, data, clusters):
-        super(PredictiveRLEnv, self).__init__()
+        super().__init__()
         self.data = data
         self.clusters = clusters
         self.current_step = 0
         self.n_steps = len(data) - 1
         
-        # Define bounded action and observation spaces
         self.observation_space = spaces.Box(
             low=-5.0, 
-            high=5.0,  # Adjusted for standardized PCA data
+            high=5.0,
             shape=(data.shape[1],), 
             dtype=np.float32
         )
         self.action_space = spaces.Box(
             low=-1.0, 
-            high=1.0,  # Bounded action space
+            high=1.0,
             shape=(data.shape[1],), 
             dtype=np.float32
         )
         
-    def reset(self):
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
         self.current_step = 0
-        return self.data[self.current_step]
+        return self.data[self.current_step], {}
     
     def step(self, action):
         self.current_step += 1
         done = self.current_step >= self.n_steps
         next_state = self.data[self.current_step] if not done else self.data[-1]
-        
-        # Scale reward calculation to bounded action space
-        reward = -np.abs(action - next_state).mean() * 0.1  # Scaled reward
-        return next_state, reward, done, {}
+        reward = -np.abs(action - next_state).mean() * 0.1
+        truncated = False
+        return next_state, reward, done, truncated, {}
 
 def password_protection():
     global password_correct
@@ -186,8 +184,6 @@ def predict_with_rl(data, n_clusters=5):
     
     pca = PCA(n_components=n_components)
     reduced_data = pca.fit_transform(scaled_data)
-    
-    # Clip PCA values to ensure observation space bounds
     reduced_data = np.clip(reduced_data, -5.0, 5.0)
     
     kmeans = KMeans(n_clusters=min(n_clusters, len(reduced_data)), random_state=42)
@@ -198,24 +194,25 @@ def predict_with_rl(data, n_clusters=5):
     model.learn(total_timesteps=1000)
 
     env_eval = PredictiveRLEnv(reduced_data, clusters)
-    state = env_eval.reset()
+    state = env_eval.reset()[0]  # Get initial observation
+    state = np.expand_dims(state, axis=0)  # Add batch dimension
     predictions, actuals, rewards = [], [], []
     
     for _ in range(len(reduced_data)-1):
         action, _ = model.predict(state)
-        next_state, reward, done, _ = env_eval.step(action)
-        predictions.append(action)
+        next_state, reward, done, truncated, _ = env_eval.step(action[0])
+        predictions.append(action[0])
         actuals.append(next_state)
         rewards.append(reward)
-        state = next_state
+        state = np.expand_dims(next_state, axis=0)
         if done:
             break
 
-    # Clip predictions to action space bounds before inverse transforms
+    # Post-processing
     predictions = np.clip(predictions, -1.0, 1.0)
-    predictions = pca.inverse_transform(np.array(predictions).squeeze())
+    predictions = pca.inverse_transform(np.array(predictions))
     predictions = scaler.inverse_transform(predictions)
-    actuals = pca.inverse_transform(np.array(actuals).squeeze())
+    actuals = pca.inverse_transform(np.array(actuals))
     actuals = scaler.inverse_transform(actuals)
     
     index = data_clean.index[1:len(predictions)+1]
@@ -286,7 +283,6 @@ def predict_with_lstm(data, prediction_years):
 def save_to_mongodb(datasets, lstm_pred, future_pred, rl_pred):
     def prepare_df(df):
         df = df.copy().reset_index()
-        # Rename index column to generic 'timestamp'
         df = df.rename(columns={df.columns[0]: 'timestamp'})
         df['timestamp'] = df['timestamp'].apply(lambda x: x.isoformat())
         return df.set_index('timestamp').to_dict()
@@ -299,8 +295,6 @@ def save_to_mongodb(datasets, lstm_pred, future_pred, rl_pred):
         "rl_predictions": prepare_df(rl_pred)
     }
     collection.insert_one(record)
-
-# Previous code remains identical until analyze_data function
 
 def analyze_data(data, lstm_pred, future_pred, timeframe):
     st.subheader("Statistical Analysis")
@@ -315,7 +309,6 @@ def analyze_data(data, lstm_pred, future_pred, timeframe):
     st.subheader("LSTM Prediction vs Actual")
     fig, ax = plt.subplots(figsize=(12, 6))
     
-    # Handle numpy array input
     if isinstance(lstm_pred, (np.ndarray, pd.Series)):
         if isinstance(lstm_pred, np.ndarray):
             lstm_series = pd.Series(
