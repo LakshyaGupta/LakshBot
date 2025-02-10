@@ -16,6 +16,12 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 import gymnasium as gym
 from gymnasium import spaces
+from ibapi.client import EClient
+from ibapi.wrapper import EWrapper
+from ibapi.contract import Contract
+from ibapi.order import Order
+import threading
+import time
 
 st.set_page_config(page_title="Stock Analysis & Prediction Dashboard", layout="wide")
 
@@ -26,6 +32,91 @@ collection = db["predictions"]
 
 # Password Protection Flag
 password_correct = False
+
+class IBapi(EWrapper, EClient):
+    def __init__(self):
+        EClient.__init__(self, self)
+        self.nextorderId = None
+        self.order_status = {}
+        self.position = {}
+        self.data = {}
+        self.event_connected = threading.Event()
+        self.event_order_complete = threading.Event()
+
+    def nextValidId(self, orderId: int):
+        super().nextValidId(orderId)
+        self.nextorderId = orderId
+        print("Next valid order ID:", orderId)
+
+    def orderStatus(self, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice):
+        super().orderStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice)
+        self.order_status[orderId] = {
+            'status': status,
+            'filled': filled,
+            'remaining': remaining,
+            'avgFillPrice': avgFillPrice
+        }
+
+    def openOrder(self, orderId, contract, order, orderState):
+        super().openOrder(orderId, contract, order, orderState)
+        print("Open order. ID:", orderId, contract.symbol, order.action, order.totalQuantity)
+
+    def execDetails(self, reqId, contract, execution):
+        super().execDetails(reqId, contract, execution)
+        print("Order Executed:", contract.symbol, execution.shares, execution.price)
+
+    def error(self, reqId, errorCode, errorString):
+        super().error(reqId, errorCode, errorString)
+        print("Error:", reqId, errorCode, errorString)
+
+    def connectAck(self):
+        self.event_connected.set()
+
+class TradingApp:
+    def __init__(self):
+        self.app = IBapi()
+        self.app.connect("127.0.0.1", 7497, clientId=1)
+        self.app_thread = threading.Thread(target=self.run_ibapi, daemon=True)
+        self.app_thread.start()
+        time.sleep(1)  # Allow time for connection
+
+    def run_ibapi(self):
+        self.app.run()
+
+    def get_next_order_id(self):
+        return self.app.nextorderId
+
+    def create_contract(self, symbol, sec_type='STK', exchange='SMART', currency='USD'):
+        contract = Contract()
+        contract.symbol = symbol
+        contract.secType = sec_type
+        contract.exchange = exchange
+        contract.currency = currency
+        return contract
+
+    def create_order(self, action, quantity, order_type='MKT'):
+        order = Order()
+        order.action = action
+        order.totalQuantity = quantity
+        order.orderType = order_type
+        order.transmit = True
+        return order
+
+    def place_order(self, contract, order):
+        order_id = self.app.nextorderId
+        self.app.placeOrder(order_id, contract, order)
+        self.app.nextorderId += 1
+        return order_id
+
+    def wait_for_order_completion(self, order_id, timeout=30):
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if order_id in self.app.order_status:
+                status = self.app.order_status[order_id]['status']
+                if status in ['Filled', 'Cancelled', 'Inactive']:
+                    return True
+            time.sleep(0.5)
+        return False
 
 class PredictiveRLEnv(gym.Env):
     def __init__(self, data, clusters):
@@ -88,6 +179,58 @@ def download_data_from_fred(series_id, start_date, end_date):
         st.error("Failed to fetch data from FRED API.")
         return pd.DataFrame()
 
+def execute_trades_based_on_predictions(predictions):
+    app = TradingApp()
+    time.sleep(2)  # Wait for connection
+    
+    if not app.app.event_connected.wait(timeout=30):
+        st.error("Failed to connect to TWS/IB Gateway")
+        return
+
+    results = []
+    for index, row in predictions.iterrows():
+        symbol = row['Symbol']
+        action = 'BUY' if row['Signal'] == 1 else 'SELL'
+        quantity = 100  # Fixed quantity for demonstration
+        
+        try:
+            contract = app.create_contract(symbol)
+            order = app.create_order(action, quantity)
+            order_id = app.place_order(contract, order)
+            
+            if app.wait_for_order_completion(order_id):
+                status = app.app.order_status.get(order_id, {}).get('status', 'Unknown')
+                filled = app.app.order_status.get(order_id, {}).get('filled', 0)
+                price = app.app.order_status.get(order_id, {}).get('avgFillPrice', 0)
+                
+                results.append({
+                    'symbol': symbol,
+                    'action': action,
+                    'quantity': quantity,
+                    'status': status,
+                    'filled': filled,
+                    'price': price
+                })
+            else:
+                results.append({
+                    'symbol': symbol,
+                    'error': 'Order timed out'
+                })
+        except Exception as e:
+            results.append({
+                'symbol': symbol,
+                'error': str(e)
+            })
+    
+    # Display trade results
+    trade_df = pd.DataFrame(results)
+    st.subheader("Trade Execution Results")
+    st.dataframe(trade_df)
+    
+    # Save trade results to MongoDB
+    if not trade_df.empty:
+        collection.insert_many(trade_df.to_dict('records'))
+
 def combine_datasets(data_dict):
     combined_data = pd.concat(data_dict.values(), axis=1, join="outer")
     combined_data.columns = data_dict.keys()
@@ -148,11 +291,13 @@ def main_runner():
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
             
             # Combine results
-            backtested_combined = pd.concat([backtested_lstm.rename(columns={'Predicted': 'LSTM'}), 
-                                             backtested_rl.rename(columns={'Predicted_RL': 'RL'})], axis=1)
-
+            backtested_combined = pd.concat([
+                backtested_lstm.rename(columns={'Predicted': 'LSTM'}), 
+                backtested_rl.rename(columns={'Predicted': 'RL'})  # Changed from Predicted_RL to Predicted
+            ], axis=1)
             st.subheader("Backtested Results Comparison")
             st.line_chart(backtested_combined)
+            plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
 
             st.subheader("LSTM Future Predictions")
             st.write(future_df)
@@ -164,6 +309,12 @@ def main_runner():
             # save_to_mongodb(dataset_urls, lstm_predictions, future_df, rl_predictions)
             
             analyze_data(combined_data, backtested_lstm['Predicted'], future_df, timeframe)
+
+            # After generating predictions
+            if st.button("Execute Trades"):
+                # Generate trading signals (example logic)
+                predictions['Signal'] = np.where(predictions['Predicted'] > predictions['Actual'], 1, -1)
+                execute_trades_based_on_predictions(predictions)
         else:
             st.error("No data found for the selected dataset URLs and date range.")
 
@@ -222,7 +373,7 @@ def predict_with_rl(data, n_clusters=5):
         'Accuracy': [1 if r > -0.1 else 0 for r in rewards]
     }, index=index)
     
-    return results, results[['Actual', 'Predicted']]
+    return results, results[['Predicted']].rename(columns={'Predicted': 'Predicted_RL'})
 
 def predict_with_lstm(data, prediction_years):
     prediction_days = prediction_years * 365
@@ -278,7 +429,9 @@ def predict_with_lstm(data, prediction_years):
         'Predicted': predictions.flatten()
     }, index=data.index[train_data_len:train_data_len+len(predictions)])
     
-    return predictions, future_df, backtested
+    return (pd.Series(predictions.flatten(), index=data.index[train_data_len:train_data_len+len(predictions)]),
+            future_df,
+            backtested)
 
 def save_to_mongodb(datasets, lstm_pred, future_pred, rl_pred):
     def prepare_df(df):
@@ -328,6 +481,80 @@ def analyze_data(data, lstm_pred, future_pred, timeframe):
         st.pyplot(fig)
     else:
         st.error("Invalid LSTM predictions format received")
+
+def plot_backtesting_results(actual_data, lstm_predictions, rl_predictions, title):
+    plt.figure(figsize=(14, 7))
+    
+    # Convert numpy arrays to pandas Series with proper indices
+    if isinstance(actual_data, np.ndarray):
+        actual_data = pd.Series(actual_data.flatten())
+    
+    if isinstance(lstm_predictions, np.ndarray):
+        lstm_predictions = pd.Series(
+            lstm_predictions.flatten(),
+            index=actual_data.index[-len(lstm_predictions):]
+        )
+    
+    if isinstance(rl_predictions, np.ndarray):
+        rl_predictions = pd.Series(
+            rl_predictions.flatten(),
+            index=actual_data.index[-len(rl_predictions):]
+        )
+    
+    # Plot actual data
+    plt.plot(actual_data.index, actual_data.values, 
+             label='Actual Data', color='blue', linewidth=2)
+    
+    # Plot LSTM predictions
+    plt.plot(lstm_predictions.index, lstm_predictions.values, 
+             label='LSTM Predicted', color='green', linestyle='--')
+    
+    # Plot RL predictions
+    plt.plot(rl_predictions.index, rl_predictions.values, 
+             label='RL Predicted', color='red', linestyle='-.')
+    
+    plt.title(title)
+    plt.xlabel('Date')
+    plt.ylabel('Value')
+    plt.legend()
+    plt.grid(True)
+    st.pyplot(plt.gcf())
+    plt.close()
+
+# Example usage:
+# plot_backtesting_results(actual_sp500, lstm_sp500_predictions, rl_sp500_predictions, 'SP500 Backtesting Results')
+
+
+def initialize_ibkr_client():
+    client = ibkr_client.IBClient(
+        username='zeidej9877',
+        password='ibkr7177!',
+        account_id='YOUR_ACCOUNT_ID'  # Replace with your actual account ID
+    )
+    client.connect()
+    return client
+
+def place_trade(client, symbol, action, quantity):
+    order = {
+        'conid': client.get_conid(symbol),
+        'secType': 'STK',
+        'orderType': 'MKT',
+        'side': action,
+        'quantity': quantity,
+        'tif': 'DAY'
+    }
+    response = client.place_order(order)
+    return response
+
+def execute_trades_based_on_predictions(predictions):
+    client = initialize_ibkr_client()
+    for index, row in predictions.iterrows():
+        symbol = row['Symbol']
+        action = 'BUY' if row['Signal'] == 1 else 'SELL'
+        quantity = determine_quantity(symbol)  # Implement this function based on your strategy
+        response = place_trade(client, symbol, action, quantity)
+        st.write(f"Trade executed for {symbol}: {action} {quantity} shares.")
+
 
 if __name__ == '__main__':
     main()
