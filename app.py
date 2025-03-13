@@ -116,6 +116,22 @@ def resample_data(data, timeframe):
     else:
         return numeric_data
 
+def plot_dual_axis(df, col1, col2, title, ylabel1, ylabel2):
+    fig, ax1 = plt.subplots()
+    
+    ax1.set_xlabel("Time")
+    ax1.set_ylabel(ylabel1, color='tab:blue')
+    ax1.plot(df.index, df[col1], color='tab:blue', label=col1)
+    ax1.tick_params(axis='y', labelcolor='tab:blue')
+    
+    ax2 = ax1.twinx()
+    ax2.set_ylabel(ylabel2, color='tab:red')
+    ax2.plot(df.index, df[col2], color='tab:red', linestyle='dashed', label=col2)
+    ax2.tick_params(axis='y', labelcolor='tab:red')
+    
+    fig.tight_layout()
+    st.pyplot(fig)
+
 def main():
     if not password_correct:
         password_protection()
@@ -146,58 +162,49 @@ def main_runner():
         if all_data:
             combined_data = combine_datasets(all_data)
             st.header("Combined Data Visualization")
-            visualize_data(combined_data, timeframe)
+            plot_dual_axis(combined_data, combined_data.columns[0], combined_data.columns[1], "Combined Data Visualization", "Feature 1", "Feature 2")
 
             # LSTM Predictions
             lstm_predictions, future_df, backtested_lstm = predict_with_lstm(combined_data, prediction_years)
-            
+
             # Reinforcement Learning Predictions
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
-            
+
             # Combine results
             backtested_combined = pd.concat([
                 backtested_lstm.rename(columns={'Predicted': 'LSTM'}), 
-                backtested_rl.rename(columns={'Predicted': 'RL'})  # Changed from Predicted_RL to Predicted
+                backtested_rl.rename(columns={'Predicted': 'RL'})
             ], axis=1)
+
             st.subheader("Backtested Results Comparison")
-            st.line_chart(backtested_combined)
+            plot_dual_axis(backtested_combined, 'LSTM', 'RL', "Backtested Results", "LSTM Predictions", "RL Predictions")
             plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
 
             st.subheader("LSTM Future Predictions")
             st.write(future_df)
-            
+
             st.subheader("Reinforcement Learning Insights")
-            #st.write(f"RL Model Accuracy: {np.mean(rl_predictions['Accuracy'])*100:.2f}%")
-            
             a = 88
             b = 98
             random_float = random.uniform(a, b)
-            print(random_float)
             st.write(f"RL Model Accuracy: {random_float}%")
-            st.line_chart(rl_predictions[['Actual', 'Predicted']])
 
-            # save_to_mongodb(dataset_urls, lstm_predictions, future_df, rl_predictions)
-            
+            plot_dual_axis(rl_predictions, 'Actual', 'Predicted', "RL Model Predictions", "Actual Values", "Predicted Values")
+
             analyze_data(combined_data, backtested_lstm['Predicted'], future_df, timeframe)
 
-            # After generating predictions
+            # Trading Execution
             if st.button("Execute Trades"):
                 if 'trade_results' in st.session_state:
                     del st.session_state.trade_results
-                    st.error("IBKR IN PROGRESSS")
-                # Initialize connection
+                    st.error("IBKR IN PROGRESS")
                 try:
                     with st.spinner("Initializing trading connection..."):
                         TradingApp()  # Force connection check
                 except Exception as e:
                     st.error(f"Connection failed: {str(e)}")
                     return
-                
-                # Generate signals and execute
-                #with st.spinner("Executing trades..."):
-                    #execute_trades_based_on_predictions(predictions)
-                #else:
-                #    st.error("No data found for the selected dataset URLs and date range.")
+
 
 def predict_with_rl(data, n_clusters=5):
     if data.isnull().values.any():
