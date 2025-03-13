@@ -180,10 +180,10 @@ def main_runner():
             if 'Predicted' not in backtested_rl.columns:
                 backtested_rl['Predicted'] = np.nan
 
-            backtested_combined = pd.concat([
-                backtested_lstm.rename(columns={'Predicted': 'LSTM'}), 
-                backtested_rl.rename(columns={'Predicted': 'RL'})
-            ], axis=1).fillna(method='ffill')  # Fill missing values if any
+            backtested_lstm = backtested_lstm.rename(columns={'Predicted': 'LSTM'})
+            backtested_rl = backtested_rl.rename(columns={'Predicted': 'RL'})
+
+            backtested_combined = pd.concat([backtested_lstm, backtested_rl], axis=1).fillna(method='ffill')  # Fill missing values if any
 
             st.subheader("Backtested Results Comparison")
             if not backtested_combined.empty:
@@ -206,7 +206,10 @@ def main_runner():
             else:
                 st.error("Missing columns in RL predictions for plotting")
 
-            analyze_data(combined_data, backtested_lstm['LSTM'], future_df, timeframe)
+            if 'LSTM' in backtested_lstm.columns:
+                analyze_data(combined_data, backtested_lstm['LSTM'], future_df, timeframe)
+            else:
+                st.error("Missing 'LSTM' column in backtested LSTM data")
 
             # Trading Execution
             if st.button("Execute Trades"):
@@ -219,6 +222,7 @@ def main_runner():
                 except Exception as e:
                     st.error(f"Connection failed: {str(e)}")
                     return
+
 
 
 def predict_with_rl(data, n_clusters=5):
