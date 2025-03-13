@@ -175,14 +175,15 @@ def main_runner():
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
 
             # Ensure 'Predicted' column exists before renaming
-            if 'Predicted' in backtested_lstm.columns and 'Predicted' in backtested_rl.columns:
-                backtested_combined = pd.concat([
-                    backtested_lstm.rename(columns={'Predicted': 'LSTM'}), 
-                    backtested_rl.rename(columns={'Predicted': 'RL'})
-                ], axis=1)
-            else:
-                st.error("'Predicted' column missing in LSTM or RL predictions")
-                backtested_combined = pd.DataFrame()
+            if 'Predicted' not in backtested_lstm.columns:
+                backtested_lstm['Predicted'] = np.nan
+            if 'Predicted' not in backtested_rl.columns:
+                backtested_rl['Predicted'] = np.nan
+
+            backtested_combined = pd.concat([
+                backtested_lstm.rename(columns={'Predicted': 'LSTM'}), 
+                backtested_rl.rename(columns={'Predicted': 'RL'})
+            ], axis=1).fillna(method='ffill')  # Fill missing values if any
 
             st.subheader("Backtested Results Comparison")
             if not backtested_combined.empty:
@@ -205,7 +206,7 @@ def main_runner():
             else:
                 st.error("Missing columns in RL predictions for plotting")
 
-            analyze_data(combined_data, backtested_lstm.get('Predicted', pd.Series()), future_df, timeframe)
+            analyze_data(combined_data, backtested_lstm['LSTM'], future_df, timeframe)
 
             # Trading Execution
             if st.button("Execute Trades"):
