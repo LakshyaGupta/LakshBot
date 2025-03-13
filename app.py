@@ -117,6 +117,10 @@ def resample_data(data, timeframe):
         return numeric_data
 
 def plot_dual_axis(df, col1, col2, title, ylabel1, ylabel2):
+    if col1 not in df.columns or col2 not in df.columns:
+        st.error(f"Missing columns: {col1}, {col2} in DataFrame")
+        return
+    
     fig, ax1 = plt.subplots()
     
     ax1.set_xlabel("Time")
@@ -170,15 +174,22 @@ def main_runner():
             # Reinforcement Learning Predictions
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
 
-            # Combine results
-            backtested_combined = pd.concat([
-                backtested_lstm.rename(columns={'Predicted': 'LSTM'}), 
-                backtested_rl.rename(columns={'Predicted': 'RL'})
-            ], axis=1)
+            # Ensure 'Predicted' column exists before renaming
+            if 'Predicted' in backtested_lstm.columns and 'Predicted' in backtested_rl.columns:
+                backtested_combined = pd.concat([
+                    backtested_lstm.rename(columns={'Predicted': 'LSTM'}), 
+                    backtested_rl.rename(columns={'Predicted': 'RL'})
+                ], axis=1)
+            else:
+                st.error("'Predicted' column missing in LSTM or RL predictions")
+                backtested_combined = pd.DataFrame()
 
             st.subheader("Backtested Results Comparison")
-            plot_dual_axis(backtested_combined, 'LSTM', 'RL', "Backtested Results", "LSTM Predictions", "RL Predictions")
-            plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
+            if not backtested_combined.empty:
+                plot_dual_axis(backtested_combined, 'LSTM', 'RL', "Backtested Results", "LSTM Predictions", "RL Predictions")
+                plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
+            else:
+                st.error("Backtested results are empty, unable to plot.")
 
             st.subheader("LSTM Future Predictions")
             st.write(future_df)
@@ -189,9 +200,12 @@ def main_runner():
             random_float = random.uniform(a, b)
             st.write(f"RL Model Accuracy: {random_float}%")
 
-            plot_dual_axis(rl_predictions, 'Actual', 'Predicted', "RL Model Predictions", "Actual Values", "Predicted Values")
+            if 'Actual' in rl_predictions.columns and 'Predicted' in rl_predictions.columns:
+                plot_dual_axis(rl_predictions, 'Actual', 'Predicted', "RL Model Predictions", "Actual Values", "Predicted Values")
+            else:
+                st.error("Missing columns in RL predictions for plotting")
 
-            analyze_data(combined_data, backtested_lstm['Predicted'], future_df, timeframe)
+            analyze_data(combined_data, backtested_lstm.get('Predicted', pd.Series()), future_df, timeframe)
 
             # Trading Execution
             if st.button("Execute Trades"):
