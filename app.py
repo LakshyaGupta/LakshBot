@@ -187,8 +187,9 @@ def main_runner():
             backtested_combined2 = pd.concat([combined_data, combined_data], axis=1).fillna(method='ffill')  # Fill missing values if any
 
             st.subheader("Backtested Results Comparison")
-            if not backtested_combined.empty:
+            if not backtested_combined1.empty:
                 plot_dual_axis(backtested_combined1, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], combined_data.columns[1])
+            if not backtested_combined2.empty:
                 plot_dual_axis(backtested_combined2, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], combined_data.columns[1])
                 plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
             else:
