@@ -190,7 +190,7 @@ def main_runner():
             if not backtested_combined1.empty:
                 plot_dual_axis(backtested_combined1, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], combined_data.columns[1])
             if not backtested_combined2.empty:
-                plot_dual_axis(backtested_combined2, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], combined_data.columns[1])
+                plot_dual_axis(backtested_combined2, combined_data.columns[0], combined_data.columns[1], "Backtested Results", combined_data.columns[0], combined_data.columns[1])
                 plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
             else:
                 st.error("Backtested results are empty, unable to plot.")
