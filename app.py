@@ -166,7 +166,7 @@ def main_runner():
         if all_data:
             combined_data = combine_datasets(all_data)
             st.header("Combined Data Visualization")
-            plot_dual_axis(combined_data, combined_data.columns[0], combined_data.columns[1], "Combined Data Visualization", "Feature 1", "Feature 2")
+            plot_dual_axis(combined_data, combined_data.columns[0], combined_data.columns[1], "Combined Data Visualization", combined_data.columns[0], combined_data.columns[1])
 
             # LSTM Predictions
             lstm_predictions, future_df, backtested_lstm = predict_with_lstm(combined_data, prediction_years)
@@ -187,7 +187,7 @@ def main_runner():
 
             st.subheader("Backtested Results Comparison")
             if not backtested_combined.empty:
-                plot_dual_axis(backtested_combined, 'LSTM', 'RL', "Backtested Results", "LSTM Predictions", "RL Predictions")
+                plot_dual_axis(backtested_combined, backtested_lstm, backtested_rl, "Backtested Results", combined_data, combined_data.columns[0], combined_data.columns[1])
                 plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
             else:
                 st.error("Backtested results are empty, unable to plot.")
