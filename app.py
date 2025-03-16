@@ -183,12 +183,13 @@ def main_runner():
             backtested_lstm = backtested_lstm.rename(columns={'Predicted': 'LSTM'})
             backtested_rl = backtested_rl.rename(columns={'Predicted': 'RL'})
 
-            backtested_combined = pd.concat([backtested_lstm, backtested_rl], axis=1).fillna(method='ffill')  # Fill missing values if any
+            backtested_combined1 = pd.concat([backtested_lstm, backtested_rl], axis=1).fillna(method='ffill')  # Fill missing values if any
+            backtested_combined2 = pd.concat([combined_data, combined_data], axis=1).fillna(method='ffill')  # Fill missing values if any
 
             st.subheader("Backtested Results Comparison")
             if not backtested_combined.empty:
-                plot_dual_axis(lstm_predictions, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], combined_data.columns[1])
-                plot_dual_axis(rl_predictions, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], combined_data.columns[1])
+                plot_dual_axis(backtested_combined1, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], combined_data.columns[1])
+                plot_dual_axis(backtested_combined2, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], combined_data.columns[1])
                 plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
             else:
                 st.error("Backtested results are empty, unable to plot.")
