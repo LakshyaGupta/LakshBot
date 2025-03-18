@@ -206,12 +206,12 @@ def main_runner():
                 plot_dual_axis(backtested_combined2, 'Predicted', 'Predicted', "Backtested Results", "", combined_data.columns[1])
                 plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
 
-            if not backtested_lstm.empty:
-                plot_dual_axis(backtested_lstm, 'LSTM', 'LSTM', "LSTM Backtested Results", "Time", "LSTM Predictions")
+            #if not backtested_lstm.empty:
+             #   plot_dual_axis(backtested_lstm, 'LSTM', 'LSTM', "LSTM Backtested Results", "Time", "LSTM Predictions")
 
             # Plot RL Backtested Results
-            if not backtested_rl.empty:
-                plot_dual_axis(backtested_rl, 'RL', 'RL', "RL Backtested Results", "Time", "RL Predictions")
+            #if not backtested_rl.empty:
+             #   plot_dual_axis(backtested_rl, 'RL', 'RL', "RL Backtested Results", "Time", "RL Predictions")
 
             st.subheader("LSTM Future Predictions")
             st.write(future_df)
