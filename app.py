@@ -187,13 +187,13 @@ def main_runner():
 
             # LSTM Predictions
             lstm_predictions, future_df, backtested_lstm = predict_with_lstm(combined_data, prediction_years)
-            lstm_predictions1, backtested_lstm1 = predict_with_lstm(first_element, prediction_years)
-            lstm_predictions2, backtested_lstm2 = predict_with_lstm(second_element, prediction_years)
+            lstm_predictions1, _, backtested_lstm1 = predict_with_lstm(first_element, prediction_years)
+            lstm_predictions2, _, backtested_lstm2 = predict_with_lstm(second_element, prediction_years)
 
             # Reinforcement Learning Predictions
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
-            rl_predictions1, backtested_rl1 = predict_with_rl(first_element)
-            rl_predictions2, backtested_rl2 = predict_with_rl(second_element)
+            rl_predictions1, backtested_rl1 = predict_with_rl(first_element)[:2]
+            rl_predictions2, backtested_rl2 = predict_with_rl(second_element)[:2]
 
             # Ensure 'Predicted' column exists before renaming
             for df in [backtested_lstm, backtested_rl, backtested_lstm1, backtested_rl1, backtested_lstm2, backtested_rl2]:
