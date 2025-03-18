@@ -169,7 +169,7 @@ def main_runner():
             plot_dual_axis(combined_data, combined_data.columns[0], combined_data.columns[1], "Combined Data Visualization", combined_data.columns[0], combined_data.columns[1])
 
             # Ensure all_data contains at least two elements
-            if not len(all_data) < 2:
+            if len(all_data) < 2:
                 st.error("Error: all_data does not contain enough elements.")
                 return
 
