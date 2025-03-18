@@ -173,8 +173,8 @@ def main_runner():
 
             # LSTM Predictions
             lstm_predictions, future_df, backtested_lstm = predict_with_lstm(combined_data, prediction_years)
-            lstm_predictions1, _, backtested_lstm1 = predict_with_lstm(first_element, prediction_years)
-            lstm_predictions2, _, backtested_lstm2 = predict_with_lstm(second_element, prediction_years)
+            lstm_predictions1, future_df, backtested_lstm1 = predict_with_lstm(first_element, prediction_years)
+            lstm_predictions2, future_df, backtested_lstm2 = predict_with_lstm(second_element, prediction_years)
 
             # Reinforcement Learning Predictions
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
