@@ -23,10 +23,6 @@ from gymnasium import spaces
 #from ibapi.order import Order
 import threading
 import time
-import asyncio
-
-if not asyncio.get_event_loop().is_running():
-    asyncio.set_event_loop(asyncio.new_event_loop())
 
 st.set_page_config(page_title="Stock Analysis & Prediction Dashboard", layout="wide")
 
