@@ -162,7 +162,6 @@ def main_runner():
             data = download_data_from_fred(dataset, start_date, end_date)
             if not data.empty:
                 all_data[dataset] = data
-                print(dataset)
 
         if all_data:
             combined_data = combine_datasets(all_data)
@@ -171,7 +170,7 @@ def main_runner():
 
             # Ensure all_data contains at least two elements
             if not isinstance(all_data, list) or len(all_data) < 2:
-                st.error("Error: all_data does not contain enough elements.")
+                st.error(all_data)
                 return
 
             # Ensure combined_data has at least two columns before accessing indices
