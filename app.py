@@ -190,20 +190,20 @@ def main_runner():
             backtested_lstm = backtested_lstm.rename(columns={'Predicted': 'LSTM'})
             backtested_rl = backtested_rl.rename(columns={'Predicted': 'RL'})
 
-            backtested_lstm1 = backtested_lstm1.rename(columns={'Predicted': 'LSTM'})
-            backtested_rl1 = backtested_rl1.rename(columns={'Predicted': 'RL'})
+            #backtested_lstm1 = backtested_lstm1.rename(columns={'Predicted': 'LSTM'})
+            #backtested_rl1 = backtested_rl1.rename(columns={'Predicted': 'RL'})
 
-            backtested_lstm2 = backtested_lstm2.rename(columns={'Predicted': 'LSTM'})
-            backtested_rl2 = backtested_rl2.rename(columns={'Predicted': 'RL'})
+            #backtested_lstm2 = backtested_lstm2.rename(columns={'Predicted': 'LSTM'})
+            #backtested_rl2 = backtested_rl2.rename(columns={'Predicted': 'RL'})
 
             backtested_combined1 = pd.concat([backtested_lstm1, backtested_rl1], axis=1).fillna(method='ffill')  # Fill missing values if any
             backtested_combined2 = pd.concat([backtested_lstm2, backtested_rl2], axis=1).fillna(method='ffill')  # Fill missing values if any
 
             st.subheader("Backtested Results Comparison")
             if not backtested_combined1.empty:
-                plot_dual_axis(backtested_combined1, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], "")
+                plot_dual_axis(backtested_combined1, 'Predicted', 'Predicted', "Backtested Results", combined_data.columns[0], "")
             if not backtested_combined2.empty:
-                plot_dual_axis(backtested_combined2, 'LSTM', 'RL', "Backtested Results", "", combined_data.columns[1])
+                plot_dual_axis(backtested_combined2, 'Predicted', 'Predicted', "Backtested Results", "", combined_data.columns[1])
                 plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
 
             if not backtested_lstm.empty:
