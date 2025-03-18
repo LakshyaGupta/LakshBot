@@ -190,11 +190,11 @@ def main_runner():
             backtested_lstm = backtested_lstm.rename(columns={'Predicted': 'LSTM'})
             backtested_rl = backtested_rl.rename(columns={'Predicted': 'RL'})
 
-            backtested_lstm1 = backtested_lstm1.rename('LSTM')
-            backtested_rl1 = backtested_rl1.rename('RL')
+            backtested_lstm1 = backtested_lstm1.rename(columns={'Predicted': 'LSTM'})
+            backtested_rl1 = backtested_rl1.rename(columns={'Predicted': 'RL'})
 
-            backtested_lstm2 = backtested_lstm2.rename('LSTM')
-            backtested_rl2 = backtested_rl2.rename('RL')
+            backtested_lstm2 = backtested_lstm2.rename(columns={'Predicted': 'LSTM'})
+            backtested_rl2 = backtested_rl2.rename(columns={'Predicted': 'RL'})
 
             backtested_combined1 = pd.concat([backtested_lstm1, backtested_rl1], axis=1).fillna(method='ffill')  # Fill missing values if any
             backtested_combined2 = pd.concat([backtested_lstm2, backtested_rl2], axis=1).fillna(method='ffill')  # Fill missing values if any
