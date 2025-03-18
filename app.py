@@ -170,9 +170,14 @@ def main_runner():
 
             # LSTM Predictions
             lstm_predictions, future_df, backtested_lstm = predict_with_lstm(combined_data, prediction_years)
+            lstm_predictions1, backtested_lstm1 = predict_with_lstm(all_data[0], prediction_years)
+            lstm_predictions2, backtested_lstm2 = predict_with_lstm(all_data[1], prediction_years)
+
 
             # Reinforcement Learning Predictions
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
+            rl_predictions1, backtested_rl1 = predict_with_rl(all_data[0])
+            rl_predictions2, backtested_rl2 = predict_with_rl(all_data[1])
 
             # Ensure 'Predicted' column exists before renaming
             if 'Predicted' not in backtested_lstm.columns:
@@ -183,14 +188,20 @@ def main_runner():
             backtested_lstm = backtested_lstm.rename(columns={'Predicted': 'LSTM'})
             backtested_rl = backtested_rl.rename(columns={'Predicted': 'RL'})
 
-            backtested_combined1 = pd.concat([backtested_lstm, backtested_rl], axis=1).fillna(method='ffill')  # Fill missing values if any
-            backtested_combined2 = pd.concat([combined_data, combined_data], axis=1).fillna(method='ffill')  # Fill missing values if any
+            backtested_lstm1 = backtested_lstm1.rename(columns={'Predicted': 'LSTM'})
+            backtested_rl1 = backtested_rl1.rename(columns={'Predicted': 'RL'})
+
+            backtested_lstm2 = backtested_lstm2.rename(columns={'Predicted': 'LSTM'})
+            backtested_rl2 = backtested_rl2.rename(columns={'Predicted': 'RL'})
+
+            backtested_combined1 = pd.concat([backtested_lstm1, backtested_rl1], axis=1).fillna(method='ffill')  # Fill missing values if any
+            backtested_combined2 = pd.concat([backtested_lstm2, backtested_rl2], axis=1).fillna(method='ffill')  # Fill missing values if any
 
             st.subheader("Backtested Results Comparison")
             if not backtested_combined1.empty:
-                plot_dual_axis(backtested_combined1, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], combined_data.columns[1])
+                plot_dual_axis(backtested_combined1, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], "")
             if not backtested_combined2.empty:
-                plot_dual_axis(backtested_combined2, combined_data.columns[0], combined_data.columns[1], "Backtested Results", combined_data.columns[0], combined_data.columns[1])
+                plot_dual_axis(backtested_combined2, 'LSTM', 'RL', "Backtested Results", "", combined_data.columns[1])
                 plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
 
             if not backtested_lstm.empty:
@@ -199,12 +210,6 @@ def main_runner():
             # Plot RL Backtested Results
             if not backtested_rl.empty:
                 plot_dual_axis(backtested_rl, 'RL', 'RL', "RL Backtested Results", "Time", "RL Predictions")
-
-            # Plot Backtesting Results
-            if not combined_data.empty:
-                plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
-            else:
-                st.error("Backtested results are empty, unable to plot.")
 
             st.subheader("LSTM Future Predictions")
             st.write(future_df)
@@ -248,54 +253,80 @@ def predict_with_rl(data, n_clusters=5):
 
     scaler = StandardScaler()
     scaled_data = scaler.fit_transform(data_clean)
-    
+
     n_components = min(len(data_clean), data_clean.shape[1], 3)
     if n_components < 1:
         st.error("Not enough data to perform PCA. Try selecting more datasets.")
         return pd.DataFrame(), pd.DataFrame()
-    
+
     pca = PCA(n_components=n_components)
-    reduced_data = pca.fit_transform(scaled_data).astype(np.float32)  # Add .astype(np.float32)
+    reduced_data = pca.fit_transform(scaled_data).astype(np.float32)
     reduced_data = np.clip(reduced_data, -5.0, 5.0)
 
-    
     kmeans = KMeans(n_clusters=min(n_clusters, len(reduced_data)), random_state=42)
     clusters = kmeans.fit_predict(reduced_data)
 
-    env = DummyVecEnv([lambda: PredictiveRLEnv(reduced_data, clusters)])
-    model = PPO("MlpPolicy", env, verbose=0)
-    model.learn(total_timesteps=1000)
+    try:
+        env = DummyVecEnv([lambda: PredictiveRLEnv(reduced_data, clusters)])
+        model = PPO("MlpPolicy", env, verbose=1)  # Verbose for debugging
+        model.learn(total_timesteps=5000)  # Increased training time
+    except Exception as e:
+        st.error(f"Error during RL model training: {str(e)}")
+        return pd.DataFrame(), pd.DataFrame()
 
     env_eval = PredictiveRLEnv(reduced_data, clusters)
-    state = env_eval.reset()[0]  # Get initial observation
-    state = np.expand_dims(state, axis=0)  # Add batch dimension
-    predictions, actuals, rewards = [], [], []
-    
-    for _ in range(len(reduced_data)-1):
-        action, _ = model.predict(state)
-        next_state, reward, done, truncated, _ = env_eval.step(action[0])
-        predictions.append(action[0])
-        actuals.append(next_state)
-        rewards.append(reward)
-        state = np.expand_dims(next_state, axis=0)
-        if done:
-            break
+    state = env_eval.reset()[0]
+    state = np.expand_dims(state, axis=0)
 
-    # Post-processing
-    predictions = np.clip(predictions, -1.0, 1.0)
-    predictions = pca.inverse_transform(np.array(predictions))
-    predictions = scaler.inverse_transform(predictions)
-    actuals = pca.inverse_transform(np.array(actuals))
-    actuals = scaler.inverse_transform(actuals)
+    predictions, actuals, rewards = [], [], []
+
+    for _ in range(len(reduced_data) - 1):
+        try:
+            action, _ = model.predict(state, deterministic=True)  # Ensuring deterministic behavior
+            next_state, reward, done, truncated, _ = env_eval.step(action[0])
+
+            predictions.append(action[0])
+            actuals.append(next_state)
+            rewards.append(reward)
+
+            state = np.expand_dims(next_state, axis=0)
+            if done:
+                break
+        except Exception as e:
+            st.error(f"Error during RL prediction: {str(e)}")
+            return pd.DataFrame(), pd.DataFrame()
+
+    if not predictions:
+        st.error("No predictions generated by RL model.")
+        return pd.DataFrame(), pd.DataFrame()
+
+    # Ensure correct transformation back to original space
+    try:
+        predictions = np.clip(predictions, -1.0, 1.0)
+        predictions = pca.inverse_transform(np.array(predictions))
+        predictions = scaler.inverse_transform(predictions)
+
+        actuals = np.array(actuals)
+        if actuals.shape[0] > 0:
+            actuals = pca.inverse_transform(actuals)
+            actuals = scaler.inverse_transform(actuals)
+        else:
+            st.warning("Actual values are empty, skipping inverse transformation.")
+            return pd.DataFrame(), pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error during inverse transformation: {str(e)}")
+        return pd.DataFrame(), pd.DataFrame()
+
+    index = data_clean.index[1:len(predictions) + 1]
     
-    index = data_clean.index[1:len(predictions)+1]
     results = pd.DataFrame({
-        'Actual': actuals.mean(axis=1),
+        'Actual': actuals.mean(axis=1) if actuals.shape[0] > 0 else [np.nan] * len(index),
         'Predicted': predictions.mean(axis=1),
         'Accuracy': [1 if r > -0.1 else 0 for r in rewards]
     }, index=index)
-    
+
     return results, results[['Predicted']].rename(columns={'Predicted': 'Predicted_RL'})
+
 
 def predict_with_lstm(data, prediction_years):
     prediction_days = prediction_years * 365
