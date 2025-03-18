@@ -162,6 +162,7 @@ def main_runner():
             data = download_data_from_fred(dataset, start_date, end_date)
             if not data.empty:
                 all_data[dataset] = data
+                console.log(dataset)
 
         if all_data:
             combined_data = combine_datasets(all_data)
