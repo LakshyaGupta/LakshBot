@@ -168,11 +168,24 @@ def main_runner():
             st.header("Combined Data Visualization")
             plot_dual_axis(combined_data, combined_data.columns[0], combined_data.columns[1], "Combined Data Visualization", combined_data.columns[0], combined_data.columns[1])
 
+            # Ensure all_data contains at least two elements
+            if not isinstance(all_data, list) or len(all_data) < 2:
+                st.error("Error: all_data does not contain enough elements.")
+                return
+
+            # Ensure combined_data has at least two columns before accessing indices
+            if combined_data is None or combined_data.empty:
+                st.error("Error: combined_data is empty.")
+                return
+
+            # Ensure combined_data has at least two columns before using column indices
+            column_0 = combined_data.columns[0] if len(combined_data.columns) > 0 else "Column_0"
+            column_1 = combined_data.columns[1] if len(combined_data.columns) > 1 else "Column_1"
+
             # LSTM Predictions
             lstm_predictions, future_df, backtested_lstm = predict_with_lstm(combined_data, prediction_years)
             lstm_predictions1, backtested_lstm1 = predict_with_lstm(all_data[0], prediction_years)
             lstm_predictions2, backtested_lstm2 = predict_with_lstm(all_data[1], prediction_years)
-
 
             # Reinforcement Learning Predictions
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
@@ -180,34 +193,36 @@ def main_runner():
             rl_predictions2, backtested_rl2 = predict_with_rl(all_data[1])
 
             # Ensure 'Predicted' column exists before renaming
-            if 'Predicted' not in backtested_lstm.columns:
-                backtested_lstm['Predicted'] = np.nan
-            if 'Predicted' not in backtested_rl.columns:
-                backtested_rl['Predicted'] = np.nan
+            for df in [backtested_lstm, backtested_rl, backtested_lstm1, backtested_rl1, backtested_lstm2, backtested_rl2]:
+                if df is not None and not df.empty:
+                    if 'Predicted' not in df.columns:
+                        df['Predicted'] = np.nan
 
+            # Rename columns for clarity
             backtested_lstm = backtested_lstm.rename(columns={'Predicted': 'LSTM'})
             backtested_rl = backtested_rl.rename(columns={'Predicted': 'RL'})
-
             backtested_lstm1 = backtested_lstm1.rename(columns={'Predicted': 'LSTM'})
             backtested_rl1 = backtested_rl1.rename(columns={'Predicted': 'RL'})
-
             backtested_lstm2 = backtested_lstm2.rename(columns={'Predicted': 'LSTM'})
             backtested_rl2 = backtested_rl2.rename(columns={'Predicted': 'RL'})
 
-            backtested_combined1 = pd.concat([backtested_lstm1, backtested_rl1], axis=1).fillna(method='ffill')  # Fill missing values if any
-            backtested_combined2 = pd.concat([backtested_lstm2, backtested_rl2], axis=1).fillna(method='ffill')  # Fill missing values if any
+            # Combine backtested results
+            backtested_combined1 = pd.concat([backtested_lstm1, backtested_rl1], axis=1).fillna(method='ffill')
+            backtested_combined2 = pd.concat([backtested_lstm2, backtested_rl2], axis=1).fillna(method='ffill')
 
             st.subheader("Backtested Results Comparison")
+
+            # Plot results safely
             if not backtested_combined1.empty:
-                plot_dual_axis(backtested_combined1, 'LSTM', 'RL', "Backtested Results", combined_data.columns[0], "")
+                plot_dual_axis(backtested_combined1, 'LSTM', 'RL', "Backtested Results", column_0, "")
+
             if not backtested_combined2.empty:
-                plot_dual_axis(backtested_combined2, 'LSTM', 'RL', "Backtested Results", "", combined_data.columns[1])
+                plot_dual_axis(backtested_combined2, 'LSTM', 'RL', "Backtested Results", "", column_1)
                 plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
 
             if not backtested_lstm.empty:
                 plot_dual_axis(backtested_lstm, 'LSTM', 'LSTM', "LSTM Backtested Results", "Time", "LSTM Predictions")
 
-            # Plot RL Backtested Results
             if not backtested_rl.empty:
                 plot_dual_axis(backtested_rl, 'RL', 'RL', "RL Backtested Results", "Time", "RL Predictions")
 
