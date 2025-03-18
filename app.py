@@ -169,8 +169,8 @@ def main_runner():
             plot_dual_axis(combined_data, combined_data.columns[0], combined_data.columns[1], "Combined Data Visualization", combined_data.columns[0], combined_data.columns[1])
 
             # Ensure all_data contains at least two elements
-            if not isinstance(all_data, list) or len(all_data) < 2:
-                st.error(all_data)
+            if not len(all_data) < 2:
+                st.error("Error: all_data does not contain enough elements.")
                 return
 
             # Ensure combined_data has at least two columns before accessing indices
@@ -182,15 +182,18 @@ def main_runner():
             column_0 = combined_data.columns[0] if len(combined_data.columns) > 0 else "Column_0"
             column_1 = combined_data.columns[1] if len(combined_data.columns) > 1 else "Column_1"
 
+            first_key, first_element = next(iter(all_data.items()))
+            second_key, second_element = list(all_data.items())[1]
+
             # LSTM Predictions
             lstm_predictions, future_df, backtested_lstm = predict_with_lstm(combined_data, prediction_years)
-            lstm_predictions1, backtested_lstm1 = predict_with_lstm(all_data[0], prediction_years)
-            lstm_predictions2, backtested_lstm2 = predict_with_lstm(all_data[1], prediction_years)
+            lstm_predictions1, backtested_lstm1 = predict_with_lstm(first_element, prediction_years)
+            lstm_predictions2, backtested_lstm2 = predict_with_lstm(second_element, prediction_years)
 
             # Reinforcement Learning Predictions
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
-            rl_predictions1, backtested_rl1 = predict_with_rl(all_data[0])
-            rl_predictions2, backtested_rl2 = predict_with_rl(all_data[1])
+            rl_predictions1, backtested_rl1 = predict_with_rl(first_element)
+            rl_predictions2, backtested_rl2 = predict_with_rl(second_element)
 
             # Ensure 'Predicted' column exists before renaming
             for df in [backtested_lstm, backtested_rl, backtested_lstm1, backtested_rl1, backtested_lstm2, backtested_rl2]:
