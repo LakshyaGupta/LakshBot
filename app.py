@@ -235,9 +235,7 @@ def main_runner():
                 st.error("Missing columns in RL predictions for plotting")
 
             if 'LSTM' in backtested_lstm.columns:
-                analyze_data(combined_data, backtested_lstm1['LSTM'], future_df1, timeframe)
-                analyze_data(combined_data, backtested_lstm2['LSTM'], future_df2, timeframe)
-
+                analyze_data(combined_data, backtested_lstm['LSTM'], future_df1, timeframe)
             else:
                 st.error("Missing 'LSTM' column in backtested LSTM data")
 
