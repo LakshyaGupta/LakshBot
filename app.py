@@ -173,8 +173,8 @@ def main_runner():
 
             # LSTM Predictions
             lstm_predictions, future_df, backtested_lstm = predict_with_lstm(combined_data, prediction_years)
-            lstm_predictions1, future_df, backtested_lstm1 = predict_with_lstm(first_element, prediction_years)
-            lstm_predictions2, future_df, backtested_lstm2 = predict_with_lstm(second_element, prediction_years)
+            lstm_predictions1, future_df1, backtested_lstm1 = predict_with_lstm(first_element, prediction_years)
+            lstm_predictions2, future_df2, backtested_lstm2 = predict_with_lstm(second_element, prediction_years)
 
             # Reinforcement Learning Predictions
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
@@ -204,7 +204,9 @@ def main_runner():
                 plot_dual_axis(backtested_combined1, 'Predicted', 'Predicted', "Backtested Results", combined_data.columns[0], "")
             if not backtested_combined2.empty:
                 plot_dual_axis(backtested_combined2, 'Predicted', 'Predicted', "Backtested Results", "", combined_data.columns[1])
-                plot_backtesting_results(combined_data, lstm_predictions, rl_predictions, "Backtested Results")
+                plot_backtesting_results(combined_data, lstm_predictions1, rl_predictions1, combined_data.columns[0] + "Backtested Results")
+                plot_backtesting_results(combined_data, lstm_predictions2, rl_predictions2, combined_data.columns[1] + "Backtested Results")
+
 
             #if not backtested_lstm.empty:
              #   plot_dual_axis(backtested_lstm, 'LSTM', 'LSTM', "LSTM Backtested Results", "Time", "LSTM Predictions")
@@ -213,8 +215,11 @@ def main_runner():
             #if not backtested_rl.empty:
              #   plot_dual_axis(backtested_rl, 'RL', 'RL', "RL Backtested Results", "Time", "RL Predictions")
 
-            st.subheader("LSTM Future Predictions")
-            st.write(future_df)
+            st.subheader(combined_data.columns[0] + "LSTM Future Predictions")
+            st.write(future_df1)
+
+            st.subheader(combined_data.columns[1] + "LSTM Future Predictions")
+            st.write(future_df2)
 
             st.subheader("Reinforcement Learning Insights")
             a = 88
@@ -223,12 +228,12 @@ def main_runner():
             st.write(f"RL Model Accuracy: {random_float}%")
 
             if 'Actual' in rl_predictions.columns and 'Predicted' in rl_predictions.columns:
-                plot_dual_axis(rl_predictions, 'Actual', 'Predicted', "RL Model Predictions", "Actual Values", "Predicted Values")
+                plot_dual_axis(future_df, 'Actual', 'Predicted', "RL Model Predictions", "Actual Values", "Predicted Values")
             else:
                 st.error("Missing columns in RL predictions for plotting")
 
             if 'LSTM' in backtested_lstm.columns:
-                analyze_data(combined_data, backtested_lstm['LSTM'], future_df, timeframe)
+                analyze_data(combined_data, backtested_lstm['LSTM'], future_df1, timeframe)
             else:
                 st.error("Missing 'LSTM' column in backtested LSTM data")
 
