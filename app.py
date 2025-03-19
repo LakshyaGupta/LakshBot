@@ -178,8 +178,8 @@ def main_runner():
 
             # Reinforcement Learning Predictions
             rl_predictions, backtested_rl = predict_with_rl(combined_data)
-            rl_predictions1, future_df3, backtested_rl1 = predict_with_rl(first_element)[:2]
-            rl_predictions2, future_df4, backtested_rl2 = predict_with_rl(second_element)[:2]
+            rl_predictions1, backtested_rl1 = predict_with_rl(first_element)[:2]
+            rl_predictions2, backtested_rl2 = predict_with_rl(second_element)[:2]
 
             # Ensure 'Predicted' column exists before renaming
             if 'Predicted' not in backtested_lstm.columns:
@@ -228,8 +228,8 @@ def main_runner():
             st.write(f"RL Model Accuracy: {random_float}%")
 
             if 'Actual' in rl_predictions.columns and 'Predicted' in rl_predictions.columns:
-                plot_dual_axis(future_df3, 'Actual', 'Predicted', combined_data.columns[0] + " RL Model Predictions", "Actual Values", "Predicted Values")
-                plot_dual_axis(future_df4, 'Actual', 'Predicted', combined_data.columns[1] + " RL Model Predictions", "Actual Values", "Predicted Values")
+                plot_dual_axis(rl_predictions1, 'Actual', 'Predicted', combined_data.columns[0] + " RL Model Predictions", "Actual Values", "Predicted Values")
+                plot_dual_axis(rl_predictions2, 'Actual', 'Predicted', combined_data.columns[1] + " RL Model Predictions", "Actual Values", "Predicted Values")
 
             else:
                 st.error("Missing columns in RL predictions for plotting")
