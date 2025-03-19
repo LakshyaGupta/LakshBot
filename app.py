@@ -204,8 +204,8 @@ def main_runner():
                 plot_dual_axis(backtested_combined1, 'Predicted', 'Predicted', "Backtested Results", combined_data.columns[0], "")
             if not backtested_combined2.empty:
                 plot_dual_axis(backtested_combined2, 'Predicted', 'Predicted', "Backtested Results", "", combined_data.columns[1])
-                plot_backtesting_results(combined_data, lstm_predictions1, rl_predictions1, combined_data.columns[0] + "Backtested Results")
-                plot_backtesting_results(combined_data, lstm_predictions2, rl_predictions2, combined_data.columns[1] + "Backtested Results")
+                plot_backtesting_results(combined_data, lstm_predictions1, rl_predictions1, combined_data.columns[0] + " Backtested Results")
+                plot_backtesting_results(combined_data, lstm_predictions2, rl_predictions2, combined_data.columns[1] + " Backtested Results")
 
 
             #if not backtested_lstm.empty:
@@ -215,10 +215,10 @@ def main_runner():
             #if not backtested_rl.empty:
              #   plot_dual_axis(backtested_rl, 'RL', 'RL', "RL Backtested Results", "Time", "RL Predictions")
 
-            st.subheader(combined_data.columns[0] + "LSTM Future Predictions")
+            st.subheader(combined_data.columns[0] + " LSTM Future Predictions")
             st.write(future_df1)
 
-            st.subheader(combined_data.columns[1] + "LSTM Future Predictions")
+            st.subheader(combined_data.columns[1] + " LSTM Future Predictions")
             st.write(future_df2)
 
             st.subheader("Reinforcement Learning Insights")
@@ -228,7 +228,9 @@ def main_runner():
             st.write(f"RL Model Accuracy: {random_float}%")
 
             if 'Actual' in rl_predictions.columns and 'Predicted' in rl_predictions.columns:
-                plot_dual_axis(future_df, 'Actual', 'Predicted', "RL Model Predictions", "Actual Values", "Predicted Values")
+                plot_dual_axis(future_df1, 'Actual', 'Predicted', combine_datasets.columns[0] + " RL Model Predictions", "Actual Values", "Predicted Values")
+                plot_dual_axis(future_df2, 'Actual', 'Predicted', combine_datasets.columns[1] + " RL Model Predictions", "Actual Values", "Predicted Values")
+
             else:
                 st.error("Missing columns in RL predictions for plotting")
 
