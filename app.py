@@ -228,8 +228,8 @@ def main_runner():
             st.write(f"RL Model Accuracy: {random_float}%")
 
             if 'Actual' in rl_predictions.columns and 'Predicted' in rl_predictions.columns:
-                plot_dual_axis(future_df1, 'Actual', 'Predicted', combine_datasets.columns[0] + " RL Model Predictions", "Actual Values", "Predicted Values")
-                plot_dual_axis(future_df2, 'Actual', 'Predicted', combine_datasets.columns[1] + " RL Model Predictions", "Actual Values", "Predicted Values")
+                plot_dual_axis(future_df1, 'Actual', 'Predicted', combined_data.columns[0] + " RL Model Predictions", "Actual Values", "Predicted Values")
+                plot_dual_axis(future_df2, 'Actual', 'Predicted', combined_data.columns[1] + " RL Model Predictions", "Actual Values", "Predicted Values")
 
             else:
                 st.error("Missing columns in RL predictions for plotting")
